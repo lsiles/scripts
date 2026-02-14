@@ -1,31 +1,27 @@
 #!/bin/bash
 
-# Script de instalación y configuración de DNS en CentOS Stream 9
-# Versión: 1.0
-# Nota: Parametrizable, sin pruebas al final.
+# =================================================================
+# SCRIPT DE INSTALACIÓN DNS (AUTORITATIVO)
+# =================================================================
+# Lee la configuración global desde config.env
+
+# Cargar configuración
+if [ -f "config.env" ]; then
+    source config.env
+else
+    echo "❌ ERROR: No se encuentra el archivo 'config.env'. Ejecuta este script en la misma carpeta."
+    exit 1
+fi
 
 set -e
 
 # =========================
-# Variables de configuración
-# =========================
-NET_IFACE="ens18"                # Interfaz de red
-HOSTNAME="dns02.local"           # Nombre de host
-IP_ADDR="192.168.0.71/24"        # IP de la VM
-GATEWAY="192.168.0.1"            # Puerta de enlace
-DNS_FORWARDER="8.8.8.8"          # DNS externo
-ZONE1="cumbre.edu.bo"
-ZONE2="institutocumbre.edu.bo"
-ZONE1_RECORDS=( "dns01 A 192.168.0.61" "portal A 192.168.0.62" "sis A 192.168.0.64" "campus A 192.168.0.66" )
-ZONE2_RECORDS=( "dns01 A 192.168.0.61" "institutocumbre A 192.168.0.65" )
-
-# =========================
 # Actualizar sistema e instalar paquetes
 # =========================
-echo "Actualizando sistema..."
+echo "🔄 Actualizando sistema..."
 dnf update -y
 
-echo "Instalando BIND y utilidades..."
+echo "📦 Instalando BIND y utilidades..."
 dnf install -y bind bind-utils
 
 # =========================
@@ -33,18 +29,23 @@ dnf install -y bind bind-utils
 # =========================
 # Obtener IP actual
 CURRENT_IP=$(ip -o -4 addr list $NET_IFACE | head -n1 | awk '{print $4}')
+TARGET_IP="$IP_DNS/$NETMASK"
 
-if [ "$CURRENT_IP" == "$IP_ADDR" ]; then
-    echo "La IP ya está configurada a $IP_ADDR. Saltando reinicio de red."
+if [ "$CURRENT_IP" == "$TARGET_IP" ]; then
+    echo "✅ La IP ya está configurada a $TARGET_IP. Saltando reinicio de red."
 else
     echo "Configurando interfaz de red $NET_IFACE..."
     # Renombrar si no coincide
-    nmcli con show | grep -q "$HOSTNAME" || nmcli con add type ethernet con-name "$HOSTNAME" ifname "$NET_IFACE" autoconnect yes
-    nmcli con mod "$HOSTNAME" ipv4.addresses "$IP_ADDR" ipv4.gateway "$GATEWAY" ipv4.method manual
+    nmcli con show | grep -q "$HOSTNAME_DNS" || nmcli con add type ethernet con-name "$HOSTNAME_DNS" ifname "$NET_IFACE" autoconnect yes
+    nmcli con mod "$HOSTNAME_DNS" ipv4.addresses "$TARGET_IP" ipv4.gateway "$GATEWAY" ipv4.method manual ipv4.dns "$DNS_FORWARDER"
     
     echo "⚠️  ATENCIÓN: Se reiniciará la interfaz de red. Si estás por SSH, la conexión podría cerrarse."
-    nmcli con up "$HOSTNAME"
+    nmcli con up "$HOSTNAME_DNS"
 fi
+
+# Configurar Hostname
+hostnamectl set-hostname $HOSTNAME_DNS
+echo "$IP_DNS $HOSTNAME_DNS" >> /etc/hosts
 
 # =========================
 # Configuración BIND
@@ -52,7 +53,7 @@ fi
 echo "Configurando named.conf..."
 cat > /etc/named.conf <<EOF
 options {
-    listen-on port 53 { 127.0.0.1; $IP_ADDR; };
+    listen-on port 53 { 127.0.0.1; $IP_DNS; };
     listen-on-v6 port 53 { ::1; };
     directory       "/var/named";
     dump-file       "/var/named/data/cache_dump.db";
@@ -81,15 +82,15 @@ zone "." IN {
     file "named.ca";
 };
 
-zone "$ZONE1" IN {
+zone "$DOMAIN_MAIN" IN {
     type master;
-    file "/var/named/$ZONE1.zone";
+    file "/var/named/$DOMAIN_MAIN.zone";
     allow-update { none; };
 };
 
-zone "$ZONE2" IN {
+zone "$DOMAIN_SEC" IN {
     type master;
-    file "/var/named/$ZONE2.zone";
+    file "/var/named/$DOMAIN_SEC.zone";
     allow-update { none; };
 };
 
@@ -102,39 +103,47 @@ EOF
 # =========================
 echo "Creando archivos de zona..."
 
-# Zona 1
-cat > /var/named/$ZONE1.zone <<EOF
+SERIAL=$(date +%Y%m%d01)
+
+# Zona 1: DOMAIN_MAIN
+cat > /var/named/$DOMAIN_MAIN.zone <<EOF
 \$TTL 86400
-@ IN SOA dns01.$ZONE1. root.$ZONE1. (
-    2026020501 ; Serial
+@ IN SOA $HOSTNAME_DNS. root.$DOMAIN_MAIN. (
+    $SERIAL ; Serial
     3600       ; Refresh
     1800       ; Retry
     604800     ; Expire
     86400 )    ; Minimum TTL
 
-@       IN NS dns01.$ZONE1.
+@       IN NS $HOSTNAME_DNS.
+
+; Registros A (Infraestructura)
+dns01   IN A $IP_DNS
+portal  IN A $IP_WEB
+sis     IN A $IP_SIS
+campus  IN A $IP_LMS
+nas     IN A $IP_NAS
+
+; Alias / CNAME (Opcionales)
+www     IN CNAME portal
 EOF
 
-for record in "${ZONE1_RECORDS[@]}"; do
-    echo "$record" >> /var/named/$ZONE1.zone
-done
-
-# Zona 2
-cat > /var/named/$ZONE2.zone <<EOF
+# Zona 2: DOMAIN_SEC
+cat > /var/named/$DOMAIN_SEC.zone <<EOF
 \$TTL 86400
-@ IN SOA dns01.$ZONE2. root.$ZONE2. (
-    2026020501 ; Serial
+@ IN SOA $HOSTNAME_DNS. root.$DOMAIN_SEC. (
+    $SERIAL ; Serial
     3600       ; Refresh
     1800       ; Retry
     604800     ; Expire
     86400 )    ; Minimum TTL
 
-@       IN NS dns01.$ZONE2.
-EOF
+@       IN NS $HOSTNAME_DNS.
 
-for record in "${ZONE2_RECORDS[@]}"; do
-    echo "$record" >> /var/named/$ZONE2.zone
-done
+; Registros A
+dns01           IN A $IP_DNS
+institutocumbre IN A $IP_WEB
+EOF
 
 # =========================
 # Permisos y SELinux
@@ -144,12 +153,19 @@ chown root:named /var/named/*.zone
 chmod 640 /var/named/*.zone
 
 # =========================
+# Configuración Firewall
+# =========================
+echo "🔥 Configurando Firewall..."
+firewall-cmd --permanent --add-service=dns
+firewall-cmd --reload
+
+# =========================
 # Verificación de zonas
 # =========================
 echo "Verificando configuración de BIND..."
 named-checkconf
-named-checkzone $ZONE1 /var/named/$ZONE1.zone
-named-checkzone $ZONE2 /var/named/$ZONE2.zone
+named-checkzone $DOMAIN_MAIN /var/named/$DOMAIN_MAIN.zone
+named-checkzone $DOMAIN_SEC /var/named/$DOMAIN_SEC.zone
 
 # =========================
 # Habilitar y arrancar servicio
@@ -158,4 +174,4 @@ echo "Habilitando y arrancando named..."
 systemctl enable named
 systemctl restart named
 
-echo "DNS instalado y configurado sin pruebas de resolución"
+echo "✅ DNS instalado y configurado correctamente (IP: $IP_DNS)"
