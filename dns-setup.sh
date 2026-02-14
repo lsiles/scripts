@@ -31,11 +31,20 @@ dnf install -y bind bind-utils
 # =========================
 # Configuración de red
 # =========================
-echo "Configurando interfaz de red $NET_IFACE..."
-# Renombrar si no coincide
-nmcli con show | grep -q "$HOSTNAME" || nmcli con add type ethernet con-name "$HOSTNAME" ifname "$NET_IFACE" autoconnect yes
-nmcli con mod "$HOSTNAME" ipv4.addresses "$IP_ADDR" ipv4.gateway "$GATEWAY" ipv4.method manual
-nmcli con up "$HOSTNAME"
+# Obtener IP actual
+CURRENT_IP=$(ip -o -4 addr list $NET_IFACE | head -n1 | awk '{print $4}')
+
+if [ "$CURRENT_IP" == "$IP_ADDR" ]; then
+    echo "La IP ya está configurada a $IP_ADDR. Saltando reinicio de red."
+else
+    echo "Configurando interfaz de red $NET_IFACE..."
+    # Renombrar si no coincide
+    nmcli con show | grep -q "$HOSTNAME" || nmcli con add type ethernet con-name "$HOSTNAME" ifname "$NET_IFACE" autoconnect yes
+    nmcli con mod "$HOSTNAME" ipv4.addresses "$IP_ADDR" ipv4.gateway "$GATEWAY" ipv4.method manual
+    
+    echo "⚠️  ATENCIÓN: Se reiniciará la interfaz de red. Si estás por SSH, la conexión podría cerrarse."
+    nmcli con up "$HOSTNAME"
+fi
 
 # =========================
 # Configuración BIND
