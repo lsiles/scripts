@@ -33,7 +33,7 @@ echo "$IP_LMS $HOSTNAME_LMS" >> /etc/hosts
 echo "📦 Instalando Stack Moodle..."
 dnf install -y httpd mariadb-server \
     php php-cli php-mysqlnd php-gd php-xml php-mbstring php-intl \
-    php-soap php-zip php-opcache php-json unzip wget
+    php-soap php-zip php-opcache php-json unzip wget tar
 
 # 3. Configurar Base de Datos para Moodle
 echo "⚙️ Configurando MariaDB para Moodle..."
