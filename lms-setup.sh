@@ -48,11 +48,36 @@ mysql -e "FLUSH PRIVILEGES;"
 echo "⚙️ Iniciando Apache..."
 systemctl enable --now httpd
 
-# 5. Firewall
+# 5. Descargar e Instalar Moodle
+echo "📥 Descargando e instalando Moodle (Última versión estable)..."
+cd /var/www/html
+if [ ! -d "moodle" ]; then
+    wget https://download.moodle.org/download.php/direct/stable405/moodle-latest-405.tgz -O moodle-latest.tgz
+    tar -zxvf moodle-latest.tgz
+    rm -f moodle-latest.tgz
+    chown -R apache:apache /var/www/html/moodle
+    chmod -R 755 /var/www/html/moodle
+else
+    echo "⚠️ La carpeta /var/www/html/moodle ya existe. Saltando descarga."
+fi
+
+# 6. Crear carpeta de datos (Moodledata)
+echo "📂 Creando moodledata..."
+if [ ! -d "/var/www/moodledata" ]; then
+    mkdir -p /var/www/moodledata
+    chown -R apache:apache /var/www/moodledata
+    chmod -R 777 /var/www/moodledata
+else
+    echo "✅ Moodledata ya existe."
+fi
+
+# 7. Firewall
 echo "🔥 Abriendo puertos..."
 firewall-cmd --permanent --add-service=http
 firewall-cmd --permanent --add-service=https
 firewall-cmd --reload
 
-echo "✅ Servidor Moodle listo (Pre-requisitos). Descarga Moodle en /var/www/html/moodle"
+echo "✅ Servidor Moodle Instalado Rápidamente."
 echo "🌐 URL: http://$IP_LMS/moodle"
+echo "📝 Datos de DB: DB=moodle, User=moodleuser, Pass=$MOODLE_DB_PASS"
+
