@@ -39,8 +39,8 @@ dnf install -y httpd mariadb-server \
 echo "⚙️ Configurando MariaDB para Moodle..."
 systemctl enable --now mariadb
 
-mysql -e "CREATE DATABASE moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -e "CREATE USER 'moodleuser'@'localhost' IDENTIFIED BY '$MOODLE_DB_PASS';"
+mysql -e "CREATE DATABASE IF NOT EXISTS moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -e "CREATE USER IF NOT EXISTS 'moodleuser'@'localhost' IDENTIFIED BY '$MOODLE_DB_PASS';"
 mysql -e "GRANT ALL PRIVILEGES ON moodle.* TO 'moodleuser'@'localhost';"
 mysql -e "FLUSH PRIVILEGES;"
 
