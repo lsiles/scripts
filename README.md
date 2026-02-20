@@ -7,7 +7,7 @@ Scripts para desplegar la infraestructura de servidores de Cumbre.edu.bo sobre V
 2.  **Usuario root:** Todos los scripts deben ejecutarse como `root`.
 3.  **Git:** Instalado en la plantilla base (`dnf install git -y`).
 
-## 🚀 Instrucciones de Uso
+## Instrucciones de Uso
 
 ### Paso 1: Clonar Repositorio
 En CADA nueva VM que crees (DNS, Web, Moodle...), ejecuta:
