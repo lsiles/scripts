@@ -29,13 +29,21 @@ fi
 hostnamectl set-hostname $HOSTNAME_LMS
 echo "$IP_LMS $HOSTNAME_LMS" >> /etc/hosts
 
-# 2. Instalar Requisitos Moodle (PHP 8.3 + Apache + MariaDB)
-echo "Instalando Stack Moodle (PHP 8.3)..."
-dnf module reset php -y
-dnf module enable php:8.3 -y
-dnf install -y httpd mariadb-server \
-    php php-cli php-mysqlnd php-gd php-xml php-mbstring php-intl \
-    php-soap php-zip php-opcache php-json unzip wget tar
+# 2. Instalar Requisitos Moodle (PHP + Apache + MariaDB)
+echo "Instalando Stack Moodle..."
+if grep -q "release 10" /etc/centos-release 2>/dev/null; then
+    echo "CentOS Stream 10 detectado. Instalando paquetes directamente."
+    dnf install -y httpd mariadb-server \
+        php php-cli php-mysqlnd php-gd php-xml php-mbstring php-intl \
+        php-soap php-zip php-opcache php-json unzip wget tar
+else
+    echo "CentOS Stream 9 detectado. Usando modularidad para PHP 8.3."
+    dnf module reset php -y
+    dnf module enable php:8.3 -y
+    dnf install -y httpd mariadb-server \
+        php php-cli php-mysqlnd php-gd php-xml php-mbstring php-intl \
+        php-soap php-zip php-opcache php-json unzip wget tar
+fi
 
 # 3. Configurar Base de Datos para Moodle
 echo "Configurando MariaDB para Moodle..."

@@ -30,11 +30,11 @@ Dependiendo de qué servidor sea, ejecuta el script correspondiente:
 
 | Rol de Servidor | Hostname | IP (Defecto) | Script a Ejecutar |
 | :--- | :--- | :--- | :--- |
-| **DNS Principal**  | `dns02` | `192.168.0.71` | `./dns-setup.sh` |
-| **Portal Web**     | `web01` | `192.168.0.72` | `./web-setup.sh` |
-| **SIS Académico**  | `sis01` | `192.168.0.73` | `./sis-setup.sh` |
-| **Moodle LMS**     | `lms01` | `192.168.0.74` | `./lms-setup.sh` |
-| **NAS (Backups)**  | `nas01` | `192.168.0.75` | `./nas-setup.sh` |
+| **DNS Principal**  | `dns02` | `172.31.2.131` | `./dns-setup.sh` |
+| **Portal Web**     | `web01` | `172.31.2.132` | `./web-setup.sh` |
+| **SIS Académico**  | `sis01` | `172.31.2.133` | `./sis-setup.sh` |
+| **Moodle LMS**     | `lms01` | `172.31.2.134` | `./lms-setup.sh` |
+| **NAS (Backups)**  | `nas01` | `172.31.2.135` | `./nas-setup.sh` |
 
 ---
 > **Nota de Seguridad:** Las contraseñas de base de datos están en `config.env`. Cámbialas antes de desplegar en producción real.

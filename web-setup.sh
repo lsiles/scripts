@@ -29,11 +29,17 @@ fi
 hostnamectl set-hostname $HOSTNAME_WEB
 echo "$IP_WEB $HOSTNAME_WEB" >> /etc/hosts
 
-# 2. Instalar Apache y PHP 8.3
-echo "Instalando Apache y PHP 8.3..."
-dnf module reset php -y
-dnf module enable php:8.3 -y
-dnf install -y httpd php php-cli php-mysqlnd php-gd php-xml php-mbstring unzip
+# 2. Instalar Apache y PHP
+echo "Instalando Apache y PHP..."
+if grep -q "release 10" /etc/centos-release 2>/dev/null; then
+    echo "CentOS Stream 10 detectado. Instalando PHP directamente (sin modularidad)."
+    dnf install -y httpd php php-cli php-mysqlnd php-gd php-xml php-mbstring unzip
+else
+    echo "CentOS Stream 9 o inferior detectado. Usando modularidad."
+    dnf module reset php -y
+    dnf module enable php:8.3 -y
+    dnf install -y httpd php php-cli php-mysqlnd php-gd php-xml php-mbstring unzip
+fi
 
 # 3. Configurar Apache
 echo "Configurando Apache..."

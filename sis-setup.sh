@@ -29,11 +29,17 @@ fi
 hostnamectl set-hostname $HOSTNAME_SIS
 echo "$IP_SIS $HOSTNAME_SIS" >> /etc/hosts
 
-# 2. Instalar Apache, PHP 8.3 y MariaDB
-echo "Instalando Stack LAMP (PHP 8.3)..."
-dnf module reset php -y
-dnf module enable php:8.3 -y
-dnf install -y httpd mariadb-server php php-cli php-mysqlnd php-gd php-xml php-mbstring unzip
+# 2. Instalar Apache, PHP y MariaDB
+echo "Instalando Stack LAMP..."
+if grep -q "release 10" /etc/centos-release 2>/dev/null; then
+    echo "CentOS Stream 10 detectado. Instalando paquetes directamente."
+    dnf install -y httpd mariadb-server php php-cli php-mysqlnd php-gd php-xml php-mbstring unzip
+else
+    echo "CentOS Stream 9 detectado. Usando modularidad."
+    dnf module reset php -y
+    dnf module enable php:8.3 -y
+    dnf install -y httpd mariadb-server php php-cli php-mysqlnd php-gd php-xml php-mbstring unzip
+fi
 
 # 3. Configurar Servicios
 echo "Iniciando servicios..."
