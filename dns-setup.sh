@@ -27,6 +27,13 @@ dnf install -y bind bind-utils
 # =========================
 # Configuración de red
 # =========================
+# Auto-detección de interfaz si ens18 no existe
+if ! ip link show "$NET_IFACE" >/dev/null 2>&1; then
+    echo "⚠️ Interfaz $NET_IFACE no encontrada. Detectando automáticamente..."
+    NET_IFACE=$(ip -o link show | awk -F': ' '$2 != "lo" {print $2}' | head -n1)
+    echo "✅ Interfaz detectada: $NET_IFACE"
+fi
+
 # Obtener IP actual
 CURRENT_IP=$(ip -o -4 addr list $NET_IFACE | head -n1 | awk '{print $4}')
 TARGET_IP="$IP_DNS/$NETMASK"
@@ -35,8 +42,9 @@ if [ "$CURRENT_IP" == "$TARGET_IP" ]; then
     echo "✅ La IP ya está configurada a $TARGET_IP. Saltando reinicio de red."
 else
     echo "Configurando interfaz de red $NET_IFACE..."
-    # Renombrar si no coincide
-    nmcli con show | grep -q "$HOSTNAME_DNS" || nmcli con add type ethernet con-name "$HOSTNAME_DNS" ifname "$NET_IFACE" autoconnect yes
+    # Limpiar conexiones previas para evitar conflictos
+    nmcli con delete "$HOSTNAME_DNS" >/dev/null 2>&1 || true
+    nmcli con add type ethernet con-name "$HOSTNAME_DNS" ifname "$NET_IFACE" autoconnect yes
     nmcli con mod "$HOSTNAME_DNS" ipv4.addresses "$TARGET_IP" ipv4.gateway "$GATEWAY" ipv4.method manual ipv4.dns "$DNS_FORWARDER"
     
     echo "⚠️  ATENCIÓN: Se reiniciará la interfaz de red. Si estás por SSH, la conexión podría cerrarse."
