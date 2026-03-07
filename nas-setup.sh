@@ -16,11 +16,21 @@ set -e
 
 # 1. Configurar Red y Hostname
 echo "🌐 Configurando Red ($IP_NAS)..."
+
+# Auto-detección de interfaz si ens18 no existe
+if ! ip link show "$NET_IFACE" >/dev/null 2>&1; then
+    echo "⚠️ Interfaz $NET_IFACE no encontrada. Detectando automáticamente..."
+    NET_IFACE=$(ip -o link show | awk -F': ' '$2 != "lo" {print $2}' | head -n1)
+    echo "✅ Interfaz detectada: $NET_IFACE"
+fi
+
 CURRENT_IP=$(ip -o -4 addr list $NET_IFACE | head -n1 | awk '{print $4}')
 TARGET_IP="$IP_NAS/$NETMASK"
 
 if [ "$CURRENT_IP" != "$TARGET_IP" ]; then
-    nmcli con show | grep -q "$HOSTNAME_NAS" || nmcli con add type ethernet con-name "$HOSTNAME_NAS" ifname "$NET_IFACE" autoconnect yes
+    # Limpiar conexiones previas para evitar conflictos
+    nmcli con delete "$HOSTNAME_NAS" >/dev/null 2>&1 || true
+    nmcli con add type ethernet con-name "$HOSTNAME_NAS" ifname "$NET_IFACE" autoconnect yes
     nmcli con mod "$HOSTNAME_NAS" ipv4.addresses "$TARGET_IP" ipv4.gateway "$GATEWAY" ipv4.method manual ipv4.dns "$IP_DNS"
     echo "⚠️  Reiniciando red..."
     nmcli con up "$HOSTNAME_NAS"
