@@ -21,11 +21,11 @@ echo "Configurando VM Gateway para Cloudflare Tunnel..."
 
 # 1. Configurar Red (Usar una IP libre, ej: .80)
 # Puedes cambiar esta IP segun tu necesidad
-IP_GW="192.168.0.80"
+IP_GW="172.31.2.80"
 HOSTNAME_GW="gateway01.local"
 
 echo "Configurando red estática en $IP_GW..."
-nmcli con mod "$NET_IFACE" ipv4.addresses "$IP_GW/24" ipv4.gateway "192.168.0.1" ipv4.method manual ipv4.dns "$IP_DNS"
+nmcli con mod "$NET_IFACE" ipv4.addresses "$IP_GW/24" ipv4.gateway "172.31.2.1" ipv4.method manual ipv4.dns "$IP_DNS"
 nmcli con up "$NET_IFACE"
 hostnamectl set-hostname $HOSTNAME_GW
 
