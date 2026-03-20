@@ -17,34 +17,36 @@ fi
 
 set -e
 
-echo "Configurando VM Gateway para Cloudflare Tunnel..."
+# 1. Configurar Red para el Gateway
+echo "Configurando Red ($IP_TUNNEL)..."
+CURRENT_IP=$(ip -o -4 addr list $NET_IFACE | head -n1 | awk '{print $4}')
+TARGET_IP="$IP_TUNNEL/$NETMASK"
 
-# 1. Configurar Red (Usar una IP libre, ej: .80)
-# Puedes cambiar esta IP segun tu necesidad
-IP_GW="172.31.2.80"
-HOSTNAME_GW="gateway01.local"
+if [ "$CURRENT_IP" != "$TARGET_IP" ]; then
+    nmcli con mod "$NET_IFACE" ipv4.addresses "$TARGET_IP" ipv4.gateway "$GATEWAY" ipv4.method manual ipv4.dns "$IP_DNS"
+    echo "Reiniciando red..."
+    nmcli con up "$NET_IFACE"
+fi
 
-echo "Configurando red estática en $IP_GW..."
-nmcli con mod "$NET_IFACE" ipv4.addresses "$IP_GW/24" ipv4.gateway "172.31.2.1" ipv4.method manual ipv4.dns "$IP_DNS"
-nmcli con up "$NET_IFACE"
-hostnamectl set-hostname $HOSTNAME_GW
+hostnamectl set-hostname $HOSTNAME_TUNNEL
 
 # 2. Instalar Cloudflared (Repositorio Oficial)
-echo "Instalando repositorio de Cloudflare..."
+echo "Instalando repositorio y cloudflared..."
 curl -L --output /etc/yum.repos.d/cloudflare-tunnel.repo https://pkg.cloudflare.com/cloudflared-ascii.repo
-
-echo "Instalando cloudflared..."
 dnf install -y cloudflared
 
 # 3. Instrucciones Finales
 echo "------------------------------------------------------------"
 echo "✅ Cloudflared se ha instalado correctamente."
 echo "------------------------------------------------------------"
-echo "PASOS PARA ACTIVAR EL TUNEL:"
-echo "1. Ejecuta: cloudflared tunnel login"
-echo "2. Sigue el link para autorizar tu dominio en Cloudflare."
-echo "3. Crea el tunel: cloudflared tunnel create universidad"
-echo "4. Mapea tus servicios en el Dashboard de Cloudflare Zero Trust:"
-echo "   - portal.midominio.com -> http://192.168.0.72"
-echo "   - campus.midominio.com -> http://192.168.0.74"
+echo "IMPORTANTE: Si ya tenías el túnel configurado, DEBES ACTUALIZAR "
+echo "los IPs de destino en el Dashboard de Cloudflare Zero Trust:"
+echo ""
+echo "Dashboard Cloudflare -> Networks -> Tunnels -> [tu-tunel]"
+echo "Modifica los 'Public Hostnames' para apuntar a las nuevas IPs:"
+echo "   - portal.$DOMAIN_MAIN -> http://$IP_WEB"
+echo "   - campus.$DOMAIN_MAIN -> http://$IP_LMS"
+echo "   - sis.$DOMAIN_MAIN    -> http://$IP_SIS"
+echo "   - legado.$DOMAIN_MAIN -> http://$IP_SIS_LEGACY"
 echo "------------------------------------------------------------"
+
