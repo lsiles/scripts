@@ -35,7 +35,7 @@ echo "$IP_MAIL $HOSTNAME_MAIL" >> /etc/hosts
 
 # 2. Instalar Postfix (MTA) y Dovecot (IMAP/POP3)
 echo "📦 Instalando Postfix y Dovecot en CentOS 10..."
-dnf install -y postfix dovecot smail-utils-cyrus-sasl
+dnf install -y postfix dovecot cyrus-sasl cyrus-sasl-plain
 
 # 3. Configurar Postfix (SMTP)
 echo "🏗️ Configurando Postfix..."
